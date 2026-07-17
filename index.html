@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="BJ Academy" />
   <link rel="manifest" href="./manifest.webmanifest" />
-  <link rel="stylesheet" href="./styles.css?v=11" />
+  <link rel="stylesheet" href="./styles.css?v=12" />
   <title>Blackjack Academy Pro</title>
 </head>
 <body>
@@ -290,6 +290,25 @@
           </div>
         </article>
 
+
+        <article class="card glass">
+          <div class="section-head"><div><p class="eyebrow">CAMERA LOGGER</p><h3>Kamera pro rychlý zápis karet</h3></div><span id="cameraStatus" class="signal neutral">Vypnuto</span></div>
+          <p class="camera-note">Namiř kameru na druhý telefon, zmraz obraz a ručně potvrď kartu. Výpočty se pak okamžitě aktualizují.</p>
+          <div class="camera-layout">
+            <div class="camera-preview-wrap">
+              <video id="cameraPreview" playsinline muted></video>
+              <canvas id="cameraSnapshot" class="hidden"></canvas>
+              <div id="cameraPlaceholder" class="camera-placeholder">Kamera není spuštěná</div>
+              <div class="camera-reticle"></div>
+            </div>
+            <div class="camera-controls">
+              <label>Přiřadit kartu<select id="cameraTarget"><option value="dealer">Dealer</option><option value="p1">Hráč 1</option><option value="p2">Hráč 2</option><option value="p3">Hráč 3</option><option value="p4">Hráč 4</option><option value="p5">Hráč 5</option><option value="p6">Hráč 6</option><option value="p7">Hráč 7</option></select></label>
+              <div class="camera-button-grid"><button id="startCamera" class="primary-btn">Spustit kameru</button><button id="freezeCamera" class="secondary-btn" disabled>Zmrazit obraz</button><button id="resumeCamera" class="secondary-btn" disabled>Pokračovat</button><button id="stopCamera" class="secondary-btn" disabled>Vypnout</button></div>
+              <div class="camera-quick-entry"><span>Potvrzení karty ze záběru</span><div id="cameraRankPicker" class="rank-picker"></div><div id="cameraSuitPicker" class="suit-picker"></div><button id="cameraConfirmCard" class="primary-btn full-width">Přidat kartu ze záběru</button></div>
+            </div>
+          </div>
+          <div id="cameraFeedback" class="coach-message neutral">Spusť kameru a namiř ji na druhý telefon.</div>
+        </article>
         <article class="card glass">
           <div class="section-head"><div><p class="eyebrow">PROBABILITY ENGINE</p><h3>Co pravděpodobně přijde dál</h3></div></div>
           <div class="probability-grid">
@@ -395,6 +414,6 @@
     <footer>Výuková simulace. Není propojena s žádnou sázkovou platformou a nezaručuje zisk.</footer>
   </div>
 
-  <script src="./app.js?v=11"></script>
+  <script src="./app.js?v=12"></script>
 </body>
 </html>

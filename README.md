@@ -26,3 +26,7 @@ Poznámka: AI Coach je lokální chytrý pravidlový systém, ne cloudový jazyk
 
 ## v11 – Live stůl
 Ruční zadávání karet dealera a až 7 hráčů, running/true count, pravděpodobnosti další karty, esa, dealer bust a zbývající složení shoe.
+
+
+## v12 – Camera Logger
+Kamera na druhý telefon, zmrazení obrazu a ruční potvrzení karty do Live stolu.
