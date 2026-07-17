@@ -22,3 +22,7 @@ Kompletní offline PWA vytvořená od nuly.
 5. Save.
 
 Poznámka: AI Coach je lokální chytrý pravidlový systém, ne cloudový jazykový model. Díky tomu funguje offline a nevyžaduje API klíč.
+
+
+## v11 – Live stůl
+Ruční zadávání karet dealera a až 7 hráčů, running/true count, pravděpodobnosti další karty, esa, dealer bust a zbývající složení shoe.

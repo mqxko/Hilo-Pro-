@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="BJ Academy" />
   <link rel="manifest" href="./manifest.webmanifest" />
-  <link rel="stylesheet" href="./styles.css?v=10" />
+  <link rel="stylesheet" href="./styles.css?v=11" />
   <title>Blackjack Academy Pro</title>
 </head>
 <body>
@@ -51,6 +51,7 @@
     <nav class="tabs glass" aria-label="Sekce">
       <button class="tab active" data-tab="training">Trénink</button>
       <button class="tab" data-tab="table">Blackjack</button>
+      <button class="tab" data-tab="live">Live stůl</button>
       <button class="tab" data-tab="career">Kariéra</button>
       <button class="tab" data-tab="analytics">Analýza</button>
       <button class="tab" data-tab="academy">Akademie</button>
@@ -226,6 +227,85 @@
         </article>
       </section>
 
+
+      <section id="live" class="panel">
+        <article class="card glass">
+          <div class="section-head">
+            <div><p class="eyebrow">LIVE TABLE SIMULATOR</p><h3>Imitace reálného blackjackového stolu</h3></div>
+            <button id="resetLiveTable" class="secondary-btn">Nový shoe</button>
+          </div>
+          <div class="form-grid">
+            <label>Počet balíčků
+              <select id="liveDecks"><option value="1">1</option><option value="2">2</option><option value="4">4</option><option value="6" selected>6</option><option value="8">8</option></select>
+            </label>
+            <label>Dealer pravidlo
+              <select id="liveSoft17"><option value="stand">S17 – stojí</option><option value="hit">H17 – bere</option></select>
+            </label>
+            <label>Počet hráčů
+              <select id="liveSeats"><option value="1">1</option><option value="3">3</option><option value="5" selected>5</option><option value="7">7</option></select>
+            </label>
+            <label>Zbývající shoe
+              <select id="liveDeckEstimate"><option value="auto" selected>Automaticky</option><option value="0.5">0,5</option><option value="1">1</option><option value="1.5">1,5</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="8">8</option></select>
+            </label>
+          </div>
+        </article>
+
+        <div class="live-metrics">
+          <article class="metric-card glass"><span>Running Count</span><strong id="liveRunning">0</strong></article>
+          <article class="metric-card glass"><span>True Count</span><strong id="liveTrue">0.00</strong></article>
+          <article class="metric-card glass"><span>Zbývá balíčků</span><strong id="liveDecksLeft">6.00</strong></article>
+          <article class="metric-card glass"><span>Viděných karet</span><strong id="liveSeen">0</strong></article>
+          <article class="metric-card glass"><span>Další vysoká karta</span><strong id="liveHighChance">38.5%</strong></article>
+          <article class="metric-card glass"><span>Další eso</span><strong id="liveAceChance">7.7%</strong></article>
+          <article class="metric-card glass"><span>Dealer bust</span><strong id="liveDealerBust">—</strong></article>
+          <article class="metric-card glass"><span>10/J/Q/K zbývá</span><strong id="liveTensLeft">96</strong></article>
+        </div>
+
+        <article class="live-table glass">
+          <div class="live-dealer-row">
+            <div class="live-seat dealer-seat active" data-target="dealer">
+              <span class="seat-label">DEALER</span>
+              <div id="liveDealerHand" class="live-hand"></div>
+              <div class="seat-controls">
+                <button class="secondary-btn live-add-card" data-target="dealer">Přidat kartu</button>
+                <button class="secondary-btn live-remove-card" data-target="dealer">Zpět</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="livePlayerSeats" class="live-player-grid"></div>
+
+          <div class="live-card-picker">
+            <div class="section-head">
+              <div><p class="eyebrow">CARD INPUT</p><h3 id="livePickerTitle">Vyber kartu pro dealera</h3></div>
+              <span id="liveActiveTarget" class="signal neutral">Dealer</span>
+            </div>
+            <div class="rank-picker" id="liveRankPicker"></div>
+            <div class="suit-picker" id="liveSuitPicker"></div>
+            <div class="live-entry-actions">
+              <button id="liveAddSelected" class="primary-btn">Přidat vybranou kartu</button>
+              <button id="liveUndo" class="secondary-btn">Vrátit poslední kartu</button>
+              <button id="liveClearRound" class="secondary-btn">Vymazat stůl</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card glass">
+          <div class="section-head"><div><p class="eyebrow">PROBABILITY ENGINE</p><h3>Co pravděpodobně přijde dál</h3></div></div>
+          <div class="probability-grid">
+            <div class="probability-item"><span>Nízká karta 2–6</span><strong id="probLow">38.5%</strong><div class="prob-bar"><div id="probLowBar"></div></div></div>
+            <div class="probability-item"><span>Neutrální karta 7–9</span><strong id="probNeutral">23.1%</strong><div class="prob-bar"><div id="probNeutralBar"></div></div></div>
+            <div class="probability-item"><span>Vysoká karta 10–A</span><strong id="probHigh">38.5%</strong><div class="prob-bar"><div id="probHighBar"></div></div></div>
+          </div>
+          <div id="liveCoach" class="coach-message neutral">Přidej odkryté karty ze stolu. Výpočty se budou aktualizovat okamžitě.</div>
+        </article>
+
+        <article class="card glass">
+          <div class="section-head"><div><p class="eyebrow">CARD COMPOSITION</p><h3>Zbývající složení shoe</h3></div></div>
+          <div id="liveComposition" class="composition-grid"></div>
+        </article>
+      </section>
+
       <section id="career" class="panel">
         <article class="career-banner glass">
           <div>
@@ -315,6 +395,6 @@
     <footer>Výuková simulace. Není propojena s žádnou sázkovou platformou a nezaručuje zisk.</footer>
   </div>
 
-  <script src="./app.js?v=10"></script>
+  <script src="./app.js?v=11"></script>
 </body>
 </html>

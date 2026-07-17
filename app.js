@@ -41,7 +41,8 @@ const state={
   game:{shoe:[],running:0,player:[],dealer:[],active:false,bankroll:10000,bet:100,doubled:false,decisionExpected:null,decisionMade:null,cardsDealt:0},
   stats:loadStats(),
   sound:true,
-  deferredInstall:null
+  deferredInstall:null,
+  live:{decks:6,seen:[],hands:{dealer:[],p1:[],p2:[],p3:[],p4:[],p5:[],p6:[],p7:[]},activeTarget:"dealer",selectedRank:"A",selectedSuit:"♠",history:[]}
 };
 
 function defaultStats(){return {xp:0,cards:0,correctCounts:0,bestStreak:0,games:0,gameWins:0,correctDecisions:0,totalDecisions:0,fullTableRounds:0,sessions:[],daily:{},missions:{},lastDate:null,dayStreak:1}}
@@ -148,13 +149,173 @@ function drawLineChart(canvasId,points,labelKey){const c=$(canvasId),ctx=c.getCo
 function renderAnalytics(){const s=state.stats;$("statsCards").textContent=s.cards;$("statsCorrect").textContent=s.correctCounts;$("statsGames").textContent=s.games;$("statsDecisions").textContent=s.totalDecisions?`${Math.round(s.correctDecisions/s.totalDecisions*100)}%`:"0%";const days=Object.entries(s.daily).slice(-7).map(([date,v])=>({label:date.slice(5),value:v.cards}));drawLineChart("dailyChart",days,"value");const weeks=[];for(let i=0;i<4;i++){const slice=Object.values(s.daily).slice(-(i+1)*7,-i*7||undefined);weeks.unshift({label:`T${4-i}`,value:slice.reduce((a,b)=>a+b.cards,0)})}drawLineChart("weeklyChart",weeks,"value");$("sessionHistory").innerHTML=s.sessions.length?s.sessions.map(x=>`<div class="session-item"><div><strong>${x.type}</strong><br><span>${x.date}</span></div><div><strong>${x.accuracy}%</strong><br><span>${x.cards} karet</span></div></div>`).join(""):'<div class="session-item"><span>Zatím žádné dokončené tréninky.</span></div>'}
 function renderAllStats(){renderCareer();renderDaily();renderAnalytics()}
 
-document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active-panel"));btn.classList.add("active");$(btn.dataset.tab).classList.add("active-panel");if(btn.dataset.tab==="analytics")renderAnalytics()}));
+
+function liveTargetName(target){return target==="dealer"?"Dealer":`Hráč ${target.slice(1)}`}
+function resetLiveTable(){
+ const decks=+$("liveDecks").value;state.live.decks=decks;state.live.seen=[];state.live.history=[];
+ state.live.hands={dealer:[],p1:[],p2:[],p3:[],p4:[],p5:[],p6:[],p7:[]};state.live.activeTarget="dealer";
+ renderLivePicker();renderLiveSeats();renderLiveTable();
+}
+function setLiveTarget(target){
+ state.live.activeTarget=target;
+ document.querySelectorAll(".live-seat").forEach(x=>x.classList.toggle("active",x.dataset.target===target));
+ $("livePickerTitle").textContent=`Vyber kartu pro ${liveTargetName(target).toLowerCase()}`;
+ $("liveActiveTarget").textContent=liveTargetName(target);
+}
+function renderLiveSeats(){
+ const seats=+$("liveSeats").value,root=$("livePlayerSeats");
+ root.innerHTML=Array.from({length:seats},(_,i)=>{const id=`p${i+1}`;return `<div class="live-seat ${state.live.activeTarget===id?"active":""}" data-target="${id}"><span class="seat-label">HRÁČ ${i+1}</span><div id="liveHand_${id}" class="live-hand"></div><div class="seat-controls"><button class="secondary-btn live-add-card" data-target="${id}">Přidat kartu</button><button class="secondary-btn live-remove-card" data-target="${id}">Zpět</button></div></div>`}).join("");
+ document.querySelectorAll(".live-seat").forEach(seat=>seat.onclick=e=>{if(!e.target.closest("button"))setLiveTarget(seat.dataset.target)});
+ document.querySelectorAll(".live-add-card").forEach(btn=>btn.onclick=()=>setLiveTarget(btn.dataset.target));
+ document.querySelectorAll(".live-remove-card").forEach(btn=>btn.onclick=()=>removeLiveCard(btn.dataset.target));
+ const dealer=document.querySelector(".dealer-seat");dealer.onclick=e=>{if(!e.target.closest("button"))setLiveTarget("dealer")};
+ document.querySelector(".dealer-seat .live-add-card").onclick=()=>setLiveTarget("dealer");
+ document.querySelector(".dealer-seat .live-remove-card").onclick=()=>removeLiveCard("dealer");
+}
+function renderLivePicker(){
+ $("liveRankPicker").innerHTML=RANKS.map(r=>`<button data-rank="${r}" class="${state.live.selectedRank===r?"active":""}">${r}</button>`).join("");
+ $("liveSuitPicker").innerHTML=SUITS.map(s=>`<button data-suit="${s}" class="${state.live.selectedSuit===s?"active":""} ${s==="♥"||s==="♦"?"red-suit":""}">${s}</button>`).join("");
+ document.querySelectorAll("[data-rank]").forEach(b=>b.onclick=()=>{state.live.selectedRank=b.dataset.rank;renderLivePicker()});
+ document.querySelectorAll("[data-suit]").forEach(b=>b.onclick=()=>{state.live.selectedSuit=b.dataset.suit;renderLivePicker()});
+}
+function addLiveCard(){
+ const card={rank:state.live.selectedRank,suit:state.live.selectedSuit};
+ const used=state.live.seen.filter(c=>c.rank===card.rank&&c.suit===card.suit).length;
+ if(used>=state.live.decks){$("liveCoach").textContent=`Tato konkrétní karta už byla zadána ${used}×.`;$("liveCoach").className="coach-message bad";return}
+ state.live.hands[state.live.activeTarget].push(card);state.live.seen.push(card);state.live.history.push({target:state.live.activeTarget,card});renderLiveTable();sound();
+}
+function removeLiveCard(target){
+ const hand=state.live.hands[target];if(!hand.length)return;const card=hand.pop();
+ const idx=state.live.seen.findLastIndex(c=>c.rank===card.rank&&c.suit===card.suit);if(idx>=0)state.live.seen.splice(idx,1);
+ const hidx=state.live.history.findLastIndex(x=>x.target===target&&x.card.rank===card.rank&&x.card.suit===card.suit);if(hidx>=0)state.live.history.splice(hidx,1);renderLiveTable();
+}
+function undoLive(){const last=state.live.history.pop();if(!last)return;state.live.hands[last.target].pop();const idx=state.live.seen.findLastIndex(c=>c.rank===last.card.rank&&c.suit===last.card.suit);if(idx>=0)state.live.seen.splice(idx,1);renderLiveTable()}
+function clearLiveRound(){Object.keys(state.live.hands).forEach(k=>state.live.hands[k]=[]);renderLiveTable()}
+function liveCounts(){
+ const total=state.live.decks*52,seen=state.live.seen.length,remaining=Math.max(total-seen,1);
+ const running=state.live.seen.reduce((a,c)=>a+SYSTEMS.hilo.values[c.rank],0);
+ const override=$("liveDeckEstimate").value,decksLeft=override==="auto"?remaining/52:+override,trueCount=running/Math.max(decksLeft,.25);
+ const rankCounts={};for(const r of RANKS)rankCounts[r]=state.live.decks*4;for(const c of state.live.seen)rankCounts[c.rank]--;
+ const low=["2","3","4","5","6"].reduce((a,r)=>a+rankCounts[r],0),neutral=["7","8","9"].reduce((a,r)=>a+rankCounts[r],0);
+ const tens=["10","J","Q","K"].reduce((a,r)=>a+rankCounts[r],0),aces=rankCounts.A,high=tens+aces;
+ return {seen,remaining,running,decksLeft,trueCount,rankCounts,low,neutral,tens,aces,high};
+}
+function dealerBustProbability(){
+ const dealer=state.live.hands.dealer;if(!dealer.length)return null;const up=normalizeRank(dealer[0].rank),rule=$("liveSoft17").value;
+ const s17={2:.353,3:.374,4:.400,5:.429,6:.423,7:.262,8:.245,9:.228,10:.230,11:.170};
+ const h17={2:.356,3:.376,4:.403,5:.431,6:.439,7:.262,8:.245,9:.228,10:.230,11:.202};
+ return Math.min(.65,Math.max(.05,(rule==="hit"?h17:s17)[up]+liveCounts().trueCount*.006));
+}
+function renderLiveTable(){
+ const c=liveCounts(),seats=+$("liveSeats").value;
+ $("liveDealerHand").innerHTML=state.live.hands.dealer.map(card=>cardHTML(card,{mini:true,anim:"deal"})).join("");
+ for(let i=1;i<=seats;i++){const el=$(`liveHand_p${i}`);if(el)el.innerHTML=state.live.hands[`p${i}`].map(card=>cardHTML(card,{mini:true,anim:"deal"})).join("")}
+ $("liveRunning").textContent=signed(c.running);$("liveTrue").textContent=signed(c.trueCount.toFixed(2));$("liveDecksLeft").textContent=c.decksLeft.toFixed(2);$("liveSeen").textContent=c.seen;
+ $("liveHighChance").textContent=`${(c.high/c.remaining*100).toFixed(1)}%`;$("liveAceChance").textContent=`${(c.aces/c.remaining*100).toFixed(1)}%`;$("liveTensLeft").textContent=c.tens;
+ const bust=dealerBustProbability();$("liveDealerBust").textContent=bust===null?"—":`${(bust*100).toFixed(1)}%`;
+ const low=c.low/c.remaining*100,neu=c.neutral/c.remaining*100,high=c.high/c.remaining*100;
+ $("probLow").textContent=`${low.toFixed(1)}%`;$("probNeutral").textContent=`${neu.toFixed(1)}%`;$("probHigh").textContent=`${high.toFixed(1)}%`;
+ $("probLowBar").style.width=`${low}%`;$("probNeutralBar").style.width=`${neu}%`;$("probHighBar").style.width=`${high}%`;
+ $("liveComposition").innerHTML=RANKS.map(r=>`<div class="composition-card"><strong>${r}</strong><span>${c.rankCounts[r]} zbývá</span></div>`).join("");
+ const coach=$("liveCoach");
+ if(!c.seen){coach.textContent="Přidej odkryté karty ze stolu. Výpočty se budou aktualizovat okamžitě.";coach.className="coach-message neutral"}
+ else if(c.trueCount>=2){coach.textContent=`Pozitivní shoe: true count ${signed(c.trueCount.toFixed(2))}. Ve zbývajících kartách je relativně více desítek a es.`;coach.className="coach-message good"}
+ else if(c.trueCount<=-1){coach.textContent=`Záporný shoe: true count ${signed(c.trueCount.toFixed(2))}. Ve zbývajících kartách je relativně více malých karet.`;coach.className="coach-message bad"}
+ else{coach.textContent=`Shoe je přibližně neutrální. Pravděpodobnost další vysoké karty je ${high.toFixed(1)} %.`;coach.className="coach-message neutral"}
+}
+
+document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{
+function liveTargetName(target){return target==="dealer"?"Dealer":`Hráč ${target.slice(1)}`}
+function resetLiveTable(){
+ const decks=+$("liveDecks").value;state.live.decks=decks;state.live.seen=[];state.live.history=[];
+ state.live.hands={dealer:[],p1:[],p2:[],p3:[],p4:[],p5:[],p6:[],p7:[]};state.live.activeTarget="dealer";
+ renderLivePicker();renderLiveSeats();renderLiveTable();
+}
+function setLiveTarget(target){
+ state.live.activeTarget=target;
+ document.querySelectorAll(".live-seat").forEach(x=>x.classList.toggle("active",x.dataset.target===target));
+ $("livePickerTitle").textContent=`Vyber kartu pro ${liveTargetName(target).toLowerCase()}`;
+ $("liveActiveTarget").textContent=liveTargetName(target);
+}
+function renderLiveSeats(){
+ const seats=+$("liveSeats").value,root=$("livePlayerSeats");
+ root.innerHTML=Array.from({length:seats},(_,i)=>{const id=`p${i+1}`;return `<div class="live-seat ${state.live.activeTarget===id?"active":""}" data-target="${id}"><span class="seat-label">HRÁČ ${i+1}</span><div id="liveHand_${id}" class="live-hand"></div><div class="seat-controls"><button class="secondary-btn live-add-card" data-target="${id}">Přidat kartu</button><button class="secondary-btn live-remove-card" data-target="${id}">Zpět</button></div></div>`}).join("");
+ document.querySelectorAll(".live-seat").forEach(seat=>seat.onclick=e=>{if(!e.target.closest("button"))setLiveTarget(seat.dataset.target)});
+ document.querySelectorAll(".live-add-card").forEach(btn=>btn.onclick=()=>setLiveTarget(btn.dataset.target));
+ document.querySelectorAll(".live-remove-card").forEach(btn=>btn.onclick=()=>removeLiveCard(btn.dataset.target));
+ const dealer=document.querySelector(".dealer-seat");dealer.onclick=e=>{if(!e.target.closest("button"))setLiveTarget("dealer")};
+ document.querySelector(".dealer-seat .live-add-card").onclick=()=>setLiveTarget("dealer");
+ document.querySelector(".dealer-seat .live-remove-card").onclick=()=>removeLiveCard("dealer");
+}
+function renderLivePicker(){
+ $("liveRankPicker").innerHTML=RANKS.map(r=>`<button data-rank="${r}" class="${state.live.selectedRank===r?"active":""}">${r}</button>`).join("");
+ $("liveSuitPicker").innerHTML=SUITS.map(s=>`<button data-suit="${s}" class="${state.live.selectedSuit===s?"active":""} ${s==="♥"||s==="♦"?"red-suit":""}">${s}</button>`).join("");
+ document.querySelectorAll("[data-rank]").forEach(b=>b.onclick=()=>{state.live.selectedRank=b.dataset.rank;renderLivePicker()});
+ document.querySelectorAll("[data-suit]").forEach(b=>b.onclick=()=>{state.live.selectedSuit=b.dataset.suit;renderLivePicker()});
+}
+function addLiveCard(){
+ const card={rank:state.live.selectedRank,suit:state.live.selectedSuit};
+ const used=state.live.seen.filter(c=>c.rank===card.rank&&c.suit===card.suit).length;
+ if(used>=state.live.decks){$("liveCoach").textContent=`Tato konkrétní karta už byla zadána ${used}×.`;$("liveCoach").className="coach-message bad";return}
+ state.live.hands[state.live.activeTarget].push(card);state.live.seen.push(card);state.live.history.push({target:state.live.activeTarget,card});renderLiveTable();sound();
+}
+function removeLiveCard(target){
+ const hand=state.live.hands[target];if(!hand.length)return;const card=hand.pop();
+ const idx=state.live.seen.findLastIndex(c=>c.rank===card.rank&&c.suit===card.suit);if(idx>=0)state.live.seen.splice(idx,1);
+ const hidx=state.live.history.findLastIndex(x=>x.target===target&&x.card.rank===card.rank&&x.card.suit===card.suit);if(hidx>=0)state.live.history.splice(hidx,1);renderLiveTable();
+}
+function undoLive(){const last=state.live.history.pop();if(!last)return;state.live.hands[last.target].pop();const idx=state.live.seen.findLastIndex(c=>c.rank===last.card.rank&&c.suit===last.card.suit);if(idx>=0)state.live.seen.splice(idx,1);renderLiveTable()}
+function clearLiveRound(){Object.keys(state.live.hands).forEach(k=>state.live.hands[k]=[]);renderLiveTable()}
+function liveCounts(){
+ const total=state.live.decks*52,seen=state.live.seen.length,remaining=Math.max(total-seen,1);
+ const running=state.live.seen.reduce((a,c)=>a+SYSTEMS.hilo.values[c.rank],0);
+ const override=$("liveDeckEstimate").value,decksLeft=override==="auto"?remaining/52:+override,trueCount=running/Math.max(decksLeft,.25);
+ const rankCounts={};for(const r of RANKS)rankCounts[r]=state.live.decks*4;for(const c of state.live.seen)rankCounts[c.rank]--;
+ const low=["2","3","4","5","6"].reduce((a,r)=>a+rankCounts[r],0),neutral=["7","8","9"].reduce((a,r)=>a+rankCounts[r],0);
+ const tens=["10","J","Q","K"].reduce((a,r)=>a+rankCounts[r],0),aces=rankCounts.A,high=tens+aces;
+ return {seen,remaining,running,decksLeft,trueCount,rankCounts,low,neutral,tens,aces,high};
+}
+function dealerBustProbability(){
+ const dealer=state.live.hands.dealer;if(!dealer.length)return null;const up=normalizeRank(dealer[0].rank),rule=$("liveSoft17").value;
+ const s17={2:.353,3:.374,4:.400,5:.429,6:.423,7:.262,8:.245,9:.228,10:.230,11:.170};
+ const h17={2:.356,3:.376,4:.403,5:.431,6:.439,7:.262,8:.245,9:.228,10:.230,11:.202};
+ return Math.min(.65,Math.max(.05,(rule==="hit"?h17:s17)[up]+liveCounts().trueCount*.006));
+}
+function renderLiveTable(){
+ const c=liveCounts(),seats=+$("liveSeats").value;
+ $("liveDealerHand").innerHTML=state.live.hands.dealer.map(card=>cardHTML(card,{mini:true,anim:"deal"})).join("");
+ for(let i=1;i<=seats;i++){const el=$(`liveHand_p${i}`);if(el)el.innerHTML=state.live.hands[`p${i}`].map(card=>cardHTML(card,{mini:true,anim:"deal"})).join("")}
+ $("liveRunning").textContent=signed(c.running);$("liveTrue").textContent=signed(c.trueCount.toFixed(2));$("liveDecksLeft").textContent=c.decksLeft.toFixed(2);$("liveSeen").textContent=c.seen;
+ $("liveHighChance").textContent=`${(c.high/c.remaining*100).toFixed(1)}%`;$("liveAceChance").textContent=`${(c.aces/c.remaining*100).toFixed(1)}%`;$("liveTensLeft").textContent=c.tens;
+ const bust=dealerBustProbability();$("liveDealerBust").textContent=bust===null?"—":`${(bust*100).toFixed(1)}%`;
+ const low=c.low/c.remaining*100,neu=c.neutral/c.remaining*100,high=c.high/c.remaining*100;
+ $("probLow").textContent=`${low.toFixed(1)}%`;$("probNeutral").textContent=`${neu.toFixed(1)}%`;$("probHigh").textContent=`${high.toFixed(1)}%`;
+ $("probLowBar").style.width=`${low}%`;$("probNeutralBar").style.width=`${neu}%`;$("probHighBar").style.width=`${high}%`;
+ $("liveComposition").innerHTML=RANKS.map(r=>`<div class="composition-card"><strong>${r}</strong><span>${c.rankCounts[r]} zbývá</span></div>`).join("");
+ const coach=$("liveCoach");
+ if(!c.seen){coach.textContent="Přidej odkryté karty ze stolu. Výpočty se budou aktualizovat okamžitě.";coach.className="coach-message neutral"}
+ else if(c.trueCount>=2){coach.textContent=`Pozitivní shoe: true count ${signed(c.trueCount.toFixed(2))}. Ve zbývajících kartách je relativně více desítek a es.`;coach.className="coach-message good"}
+ else if(c.trueCount<=-1){coach.textContent=`Záporný shoe: true count ${signed(c.trueCount.toFixed(2))}. Ve zbývajících kartách je relativně více malých karet.`;coach.className="coach-message bad"}
+ else{coach.textContent=`Shoe je přibližně neutrální. Pravděpodobnost další vysoké karty je ${high.toFixed(1)} %.`;coach.className="coach-message neutral"}
+}
+
+document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active-panel"));btn.classList.add("active");$(btn.dataset.tab).classList.add("active-panel");if(btn.dataset.tab==="analytics")renderAnalytics()}));
 $("guessMinus").onclick=()=>setGuess(state.trainer.guess-1);$("guessPlus").onclick=()=>setGuess(state.trainer.guess+1);$("guessZero").onclick=()=>setGuess(0);document.querySelectorAll("[data-delta]").forEach(b=>b.onclick=()=>setGuess(state.trainer.guess+ +b.dataset.delta));
 $("drawTrainerCard").onclick=drawTrainer;$("checkTrainerGuess").onclick=()=>checkTrainer(false);$("revealTrainerCount").onclick=()=>checkTrainer(true);$("resetTrainer").onclick=()=>{finishTrainerSession();resetTrainer()};$("trainerDecks").onchange=resetTrainer;$("countSystem").onchange=()=>{renderSystemMap();resetTrainer()};
 $("newShoe").onclick=resetGameShoe;$("dealGame").onclick=dealGame;$("hitGame").onclick=hitGame;$("standGame").onclick=standGame;$("doubleGame").onclick=doubleGame;$("surrenderGame").onclick=surrenderGame;document.querySelectorAll("[data-chip]").forEach(b=>b.onclick=()=>{if(!state.game.active&&state.game.bet+ +b.dataset.chip<=state.game.bankroll){state.game.bet+=+b.dataset.chip;renderGame()}});
+
+$("resetLiveTable").onclick=resetLiveTable;
+$("liveDecks").onchange=resetLiveTable;
+$("liveSeats").onchange=()=>{renderLiveSeats();renderLiveTable()};
+$("liveDeckEstimate").onchange=renderLiveTable;
+$("liveSoft17").onchange=renderLiveTable;
+$("liveAddSelected").onclick=addLiveCard;
+$("liveUndo").onclick=undoLive;
+$("liveClearRound").onclick=clearLiveRound;
+
 $("calculateStrategy").onclick=calculateStrategy;$("clearStats").onclick=()=>{if(confirm("Opravdu vymazat všechny statistiky?")){state.stats=defaultStats();saveStats()}};
 $("soundToggle").onclick=()=>{state.sound=!state.sound;$("soundToggle").textContent=state.sound?"🔊":"🔇"};
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();state.deferredInstall=e;$("installBtn").classList.remove("hidden")});$("installBtn").onclick=async()=>{if(!state.deferredInstall)return;state.deferredInstall.prompt();await state.deferredInstall.userChoice;$("installBtn").classList.add("hidden")};
 let lastTouch=0;document.addEventListener("touchend",e=>{const now=Date.now();if(now-lastTouch<350){e.preventDefault();e.stopPropagation()}lastTouch=now},{passive:false,capture:true});["gesturestart","gesturechange","gestureend"].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
 if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=10"));
-ensureToday();resetTrainer();resetGameShoe();renderSystemMap();renderAllStats();saveStats();
+ensureToday();resetTrainer();resetGameShoe();renderSystemMap();renderAllStats();resetLiveTable();saveStats();
