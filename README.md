@@ -30,3 +30,10 @@ Ruční zadávání karet dealera a až 7 hráčů, running/true count, pravděp
 
 ## v12 – Camera Logger
 Kamera na druhý telefon, zmrazení obrazu a ruční potvrzení karty do Live stolu.
+
+
+## v12.1 – stabilní oprava
+- opravena syntaktická chyba, kvůli které nereagovalo žádné tlačítko
+- zachován Live stůl i Camera Logger
+- změněna verze cache pro vynucené načtení opravených souborů
+- app.js prošel kontrolou syntaxe pomocí Node.js
